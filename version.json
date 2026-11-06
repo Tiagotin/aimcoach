@@ -1,12 +1,13 @@
 {
- "version": "1.5.0",
+ "version": "1.5.1",
  "minimaInstalador": "1.5.0",
  "html": {
   "url": "app/aim-coach.html",
-  "sha256": "00f30dccd14909c4eabe093a70b5bb1b58ab9ffe7e5c09f22edd4703bcca49e6"
+  "sha256": "6a9e111ac070b85ca54cf4cecefbf9cba6730f48fac1bd0e7c1e13f3a1bef5bd"
  },
  "notas": [
-  "Actualizaciones automáticas al abrir la app",
-  "Instalador sin trabarse en los archivos grandes"
+  "Coach en vivo más chico y sin repetirse",
+  "Barrera de inicio, salto (Espacio) y arma zurda (H)",
+  "Flash del iniciador en E; trade penaliza adelantar al compañero"
  ]
 }

@@ -304,14 +304,15 @@
         <div id="res-tendencias" class="tendencias"></div>
       </div>
     </div>
-    <!-- 2) Tu error principal y qué hacer -->
-    <div id="res-principal" style="margin-top:16px"></div>
-    <div id="res-repe" style="margin-top:16px"></div>
+    <!-- Botones arriba, siempre a la vista -->
     <div class="fila" style="margin-top:16px">
-      <button class="primario" id="btn-siguiente">Siguiente</button>
+      <button class="primario" id="btn-siguiente">Siguiente ▶</button>
       <button id="btn-repetir">Repetir</button>
       <button id="btn-res-menu">Menú</button>
     </div>
+    <!-- 2) Tu error principal y qué hacer -->
+    <div id="res-principal" style="margin-top:16px"></div>
+    <div id="res-repe" style="margin-top:16px"></div>
     <!-- 3) Detalle para el que lo quiera -->
     <details style="margin-top:16px">
       <summary>Ver detalle: estadísticas y otros errores</summary>
@@ -1359,7 +1360,7 @@ const MODOS_SITIO = {
     desc: 'Como la entrada, pero con 2 dash de Jett (E): salís disparado hacia donde te movés (WASD). Usalo para cruzar un ángulo abierto o para cambiar de posición después del kill.',
     objetivo: 'Entrá rápido sin regalarte: dash hacia una cobertura, nunca al medio de dos ángulos.', rangos: [700, 1200, 1700, 2200, 2700, 3200, 3700] },
   trade: { nombre: 'Trade (iniciador)', rondas: 6, ventana: 850, rol: 'Iniciador', limite: 40, habilidades: ['flash'],
-    desc: 'Un compañero (cabeza azul) entra primero. Si lo matan, tradeá al que lo mató en menos de 3 s. Tenés 2 flashes (Q): explotan adelante tuyo y ciegan a los enemigos que ven la explosión.',
+    desc: 'Un compañero (cabeza azul) entra primero. Si lo matan, tradeá al que lo mató en menos de 3 s. Tenés 2 flashes (E, como la de Skye): explotan adelante tuyo y ciegan a los enemigos que ven la explosión.',
     objetivo: 'Seguí a tu compañero a 2–5 m. Flash para él, y trade en menos de 3 s.', rangos: [700, 1200, 1700, 2200, 2700, 3200, 3700] },
   humos: { nombre: 'Control de mapa (humos)', rondas: 5, ventana: 850, rol: 'Controlador', limite: 45, habilidades: ['humo'],
     desc: 'Tenés 2 humos: E abre el mapa táctico, movés el cursor con el mouse y clic para tirarlo. Tapá los ángulos de los defensores antes de entrar: si no te ven, no te pueden disparar (y vos tampoco los ves).',
@@ -1373,7 +1374,7 @@ const MODOS_SITIO = {
 };
 // Habilidades: tecla, nombre y cargas por ronda
 // [ranura de Valorant, nombre, cargas por ronda]. La tecla real de cada ranura se cambia en Ajustes
-const HABILIDADES = { dash: ['E', 'Dash', 2], leer: ['C', 'Leer', 2], flash: ['Q', 'Flash', 2], humo: ['E', 'Humo', 2], trip: ['C', 'Cable', 2], jaula: ['Q', 'Jaula', 2] };
+const HABILIDADES = { dash: ['E', 'Dash', 2], leer: ['C', 'Leer', 2], flash: ['E', 'Flash', 2], humo: ['E', 'Humo', 2], trip: ['C', 'Cable', 2], jaula: ['Q', 'Jaula', 2] };
 const TECLAS_HAB_DEFAULT = { C: 'KeyC', Q: 'KeyQ', E: 'KeyE', X: 'KeyX' };
 const teclaHab = ranura => (datos.ajustes.teclasHab || TECLAS_HAB_DEFAULT)[ranura] || TECLAS_HAB_DEFAULT[ranura];
 const nombreTecla = code => code.replace(/^Key|^Digit/, '').replace('ShiftLeft', 'Shift').replace('ControlLeft', 'Ctrl');
@@ -1524,7 +1525,7 @@ class EscSitio {
     this.st = nuevasStats(); this.st.rondasGanadas = 0; this.st.rondasJugadas = 0;
     this.ventana = def.ventana; this.enemigos = []; this.ronda = 0; this.banner = null; this.finRonda = null; this.cerrado = null;
     this.vida = VIDA_JUGADOR; this.trazas = []; this.golpes = []; this.st.danoRecibido = 0;
-    Object.assign(this.st, { dobleAngulo: 0, tradesOk: 0, tradesT: [], tradeDist: [], gsOk: 0, gsTot: 0, humosUtil: 0, humosTot: 0, oido: 0 });
+    Object.assign(this.st, { adelantos: 0, dobleAngulo: 0, tradesOk: 0, tradesT: [], tradeDist: [], gsOk: 0, gsTot: 0, humosUtil: 0, humosTot: 0, oido: 0 });
     this.humos = []; this.flashes = []; this.trip = null; this.aliado = null; this.trade = null; this.cargas = {}; this.flashJugador = 0; this.ojos = []; this.cables = [];
     this.cajas = this.mapa.cajas.map(([x1, x2, z1, z2, alto, base = 0]) => ({ x1, x2, z1, z2, y1: base, y2: base + alto }));
     this.caras = carasDeCajas(this.mapa.cajas);
@@ -1545,8 +1546,9 @@ class EscSitio {
     this.ubicarCamara(); arma.balas = ARMA.cargador; arma.recargaFin = 0;
     this.vida = VIDA_JUGADOR; this.trazas = []; this.golpes = [];
     this.humos = []; this.flashes = []; this.trip = null; this.aliado = null; this.trade = null; this.flashJugador = 0; this.tactico = null;
-    this.cargas = Object.fromEntries((this.def.habilidades || []).map(h => [h, HABILIDADES[h][2]])); this.dobleRonda = false; this.avisoOido = false;
+    this.cargas = Object.fromEntries((this.def.habilidades || []).map(h => [h, HABILIDADES[h][2]])); this.dobleRonda = false; this.avisoOido = false; this.adelantoRonda = false;
     this.ojos = []; this.cables = this.def.modo === 'flanco' ? this.setupCypher() : []; aplicarZoom(1);
+    this.ponerBarrera();
     jugador.dashFin = 0;
     this.tLimite = this.def.limite ? this.listo + this.def.limite : null;
     // Pregunta de gamesense al empezar la ronda 2: el juego espera la respuesta (teclas 1, 2, 3)
@@ -1576,6 +1578,21 @@ class EscSitio {
       this.spikeFin = this.listo + 30;
     }
     this.st.intentos += this.enemigos.length;
+  }
+  // Barrera naranja como la del spawn: 3 m adelante del arranque, de pared a pared, hasta el ¡YA!
+  ponerBarrera() {
+    if (this.barrera) this.cajas = this.cajas.filter(c => c !== this.barrera);
+    this.barrera = null;
+    if (!['entrada', 'jett', 'trade', 'humos', 'lurk'].includes(this.def.modo)) return;
+    const r = this.def.modo === 'lurk' ? this.mapa.defensa[1].ruta : this.mapa.ataque[0].ruta;
+    const [x0, y0, z0] = r[0], [x1, , z1] = r[1], L = Math.hypot(x1 - x0, z1 - z0) || 1, dx = (x1 - x0) / L, dz = (z1 - z0) / L;
+    const o = { x: x0 + dx * Math.min(3, L * 0.5), y: y0 + 1, z: z0 + dz * Math.min(3, L * 0.5) };
+    const izq = this.cableDesde(o, { x: -dz, y: 0, z: dx }), der = this.cableDesde(o, { x: dz, y: 0, z: -dx });
+    const a = izq ? izq.b : { x: o.x - dz * 3, z: o.z + dx * 3 }, b = der ? der.b : { x: o.x + dz * 3, z: o.z - dx * 3 };
+    const g = 0.1; // grosor
+    this.barrera = { x1: Math.min(a.x, b.x) - (Math.abs(dx) > 0.5 ? g : 0), x2: Math.max(a.x, b.x) + (Math.abs(dx) > 0.5 ? g : 0),
+      z1: Math.min(a.z, b.z) - (Math.abs(dz) > 0.5 ? g : 0), z2: Math.max(a.z, b.z) + (Math.abs(dz) > 0.5 ? g : 0), y1: y0, y2: y0 + 4, barrera: true };
+    this.cajas = [...this.cajas, this.barrera];
   }
   // Candidatos de defensores: puntos del sitio que NO se ven desde donde arrancás pero sí desde adentro del sitio
   candidatosHold() {
@@ -1806,6 +1823,12 @@ class EscSitio {
     const a = this.aliado;
     if (a && a.vivo) {
       this.moverEnemigo(a, dt);
+      // ¿Lo pasaste? Se compara quién está más cerca de la entrada del sitio
+      const ent = this.mapa.ataque[0].ruta.at(-1), dJ = Math.hypot(cam.x - ent[0], cam.z - ent[2]), dA = Math.hypot(a.pos.x - ent[0], a.pos.z - ent[2]);
+      if (a.estado !== 'espera' && dJ < dA - 1 && !this.adelantoRonda) {
+        this.adelantoRonda = true; this.st.adelantos++; this.st.puntos -= 50;
+        avisar('No te adelantes: dejá que tu compañero entre primero (-50)', '#ff4d6d');
+      }
       if (a.estado !== 'espera') for (const e of this.enemigos) {
         if (!e.vivo || e.estado === 'espera' || (e.ciego && t < e.ciego)) continue;
         e.tAli = this.bloqueado(e.pos, a.pos) ? 0 : (e.tAli || 0) + dt;
@@ -1885,6 +1908,7 @@ class EscSitio {
   actualizar(dt, t, vel) {
     this.t = t;
     if (this.pendiente && t >= this.pendiente) { this.pendiente = null; this.nuevaRonda(t); }
+    if (this.barrera && t >= this.listo) { this.cajas = this.cajas.filter(c => c !== this.barrera); this.barrera = null; } // ¡YA!: cae la barrera
     if (!this.ronda || this.finRonda || t < this.listo) return; // durante la cuenta regresiva no pasa nada
     if (this.spikeFin) {
       const resta = this.spikeFin - t;
@@ -2012,6 +2036,7 @@ class EscSitio {
     for (const e of this.enemigos) if (e.vivo && e.estado !== 'espera') lista.push({ d: Math.hypot(e.pos.x - cam.x, e.pos.y - 0.6 - cam.y, e.pos.z - cam.z), e });
     const a = this.aliado; if (a && a.vivo) lista.push({ d: Math.hypot(a.pos.x - cam.x, a.pos.y - 0.6 - cam.y, a.pos.z - cam.z), aliado: a });
     for (const h of this.humos) if (h.r > 0.05) lista.push({ d: Math.hypot(h.x - cam.x, h.y - cam.y, h.z - cam.z), humo: h });
+    if (this.barrera) { const c = this.barrera; lista.push({ d: Math.hypot((c.x1 + c.x2) / 2 - cam.x, (c.z1 + c.z2) / 2 - cam.z), barrera: c }); }
     // Cables: en el orden de dibujo para que las paredes los tapen
     for (const c of this.cables) if (c.activo) lista.push({ d: Math.hypot((c.a.x + c.b.x) / 2 - cam.x, c.a.y - cam.y, (c.a.z + c.b.z) / 2 - cam.z), cable: c });
     if (this.spikeFin && this.ronda && !this.finRonda) { const [x, z] = this.mapa.spike; lista.push({ d: Math.hypot(x - cam.x, 0.3 - cam.y, z - cam.z), spike: { x, z } }); }
@@ -2020,6 +2045,12 @@ class EscSitio {
       if (it.cara) dibujarPoligono(it.cara.pts, it.cara.color, 'rgba(0,0,0,0.18)');
       else if (it.e) dibujarHumano(it.e, this.colorEnemigo(it.e));
       else if (it.aliado) dibujarHumano(it.aliado, '#4da3ff', '#2f5f9e');
+      else if (it.barrera) { // pared naranja semitransparente
+        const c = it.barrera, ancho = c.x2 - c.x1 > c.z2 - c.z1, xm = (c.x1 + c.x2) / 2, zm = (c.z1 + c.z2) / 2;
+        const p = ancho ? [[c.x1, zm], [c.x2, zm]] : [[xm, c.z1], [xm, c.z2]];
+        dibujarPoligono([{ x: p[0][0], y: c.y1, z: p[0][1] }, { x: p[1][0], y: c.y1, z: p[1][1] }, { x: p[1][0], y: c.y2, z: p[1][1] }, { x: p[0][0], y: c.y2, z: p[0][1] }],
+          'rgba(255,140,40,0.16)', 'rgba(255,160,60,0.8)');
+      }
       else if (it.cable) {
         const c = it.cable; ctx.beginPath(); ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2.5; trazarLinea(c.a, c.b); ctx.stroke();
         dibujarEsfera(c.a, 0.07, '#00e5ff'); dibujarEsfera(c.b, 0.07, '#00e5ff');
@@ -2068,7 +2099,9 @@ class EscSitio {
       const w = Math.min(760, W - 40), x0 = W / 2 - w / 2, y0 = H * 0.2;
       ctx.fillStyle = 'rgba(10,13,20,0.92)'; ctx.fillRect(x0, y0, w, 250); ctx.strokeStyle = '#ff4d6d'; ctx.strokeRect(x0, y0, w, 250);
       ctx.textAlign = 'left'; ctx.fillStyle = '#aab3c5'; ctx.font = '600 13px Segoe UI, sans-serif';
-      ctx.fillText(`🧠 GAMESENSE · ${this.def.rol}` + (pr.resp == null ? ' · respondé con 1, 2 o 3' : ''), x0 + 20, y0 + 28);
+      ctx.fillText(`🧠 GAMESENSE · ${this.def.rol}`, x0 + 20, y0 + 28);
+      if (pr.resp == null) { ctx.fillStyle = '#ff4d6d'; ctx.font = '700 17px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Apretá 1, 2 o 3: el número de la respuesta correcta', W / 2, y0 + 220); ctx.textAlign = 'left'; }
       ctx.fillStyle = '#ffffff'; ctx.font = '600 18px Segoe UI, sans-serif'; ctx.fillText(pr.q, x0 + 20, y0 + 60, w - 40);
       pr.op.forEach((o, i) => {
         ctx.fillStyle = pr.resp == null ? '#e6e9f0' : i === pr.ok ? '#2ecc71' : i === pr.resp ? '#ff4d6d' : '#6b7488';
@@ -2131,10 +2164,22 @@ function formatoTiempo(seg, arriba) {
 
 // ---------- Coach en vivo: un aviso corto en pantalla cuando aparece un error ----------
 let avisoVivo = null, ultimoAviso = -10;
+// Cada consejo se muestra como mucho 3 veces por ejercicio y con 20 s entre repeticiones; el resto solo se cuenta
+const MAX_AVISO = 3, PAUSA_AVISO = 20;
 function avisar(txt, color) {
-  if (datos.ajustes.avisos === false || estado !== 'jugando') return;
-  if (tiempoJuego - ultimoAviso < 1.4) return; // como mucho uno cada 1.4 s
+  if (estado !== 'jugando' || !esc) return;
+  const clave = txt.replace(/[\d.,]+/g, '#'), reg = (esc.avisos = esc.avisos || {})[clave] || (esc.avisos[clave] = { txt, n: 0, vistos: 0, ultimo: -99, bueno: color === '#2ecc71' });
+  reg.n++; reg.txt = txt;
+  if (datos.ajustes.avisos === false) return;
+  if (reg.vistos >= (reg.bueno ? 1 : MAX_AVISO) || tiempoJuego - reg.ultimo < PAUSA_AVISO) return; // los "¡Bien!" salen una sola vez
+  if (tiempoJuego - ultimoAviso < 2.5) return; // como mucho uno cada 2.5 s
+  reg.vistos++; reg.ultimo = tiempoJuego;
   avisoVivo = { txt, color: color || '#f5a623', t0: tiempoJuego }; ultimoAviso = tiempoJuego;
+}
+// Resumen de los avisos del coach para la pantalla de resultados
+function resumenAvisos(es) {
+  const l = Object.values(es.avisos || {}).filter(a => !a.bueno).sort((a, b) => b.n - a.n).slice(0, 6);
+  return l.length ? `<div class="nota" style="margin-top:10px"><b>Lo que más te marcó el coach:</b> ${l.map(a => `${escHTML(a.txt)}${a.n > 1 ? ` <b>×${a.n}</b>` : ''}`).join(' · ')}</div>` : '';
 }
 // Al matar: qué hiciste bien o mal en ese duelo
 function coachKill(a, zona) {
@@ -2169,7 +2214,9 @@ function disparar(t) {
   const mv = velJugador();
   // Moverse abre las balas: corriendo es muy impreciso, caminando un poco (hay que frenar antes de tirar)
   const sp = (i < 0.5 ? ARMA.spreadBase : Math.min(ARMA.spreadBase + i * 0.06, 1.0)) + (mv > 3 ? 3.5 : mv > 0.6 ? mv * 0.6 : 0)
-    + (ARMA.sinZoom && zoomAct === 1 ? ARMA.sinZoom : 0); // Operator sin zoom: muy imprecisa
+    + (ARMA.sinZoom && zoomAct === 1 ? ARMA.sinZoom : 0) // Operator sin zoom: muy imprecisa
+    + (jugador.enAire ? 6 : 0); // en el aire las balas se abren muchísimo
+  if (jugador.enAire) avisar('Disparaste en el aire: aterrizá y después tirá');
   if (mv > 1.5) avisar('Disparaste moviéndote: frená antes de tirar');
   const ang = rand(0, Math.PI * 2), rr = sp * Math.sqrt(Math.random());
   const ox = px + Math.cos(ang) * rr, oy = py + Math.sin(ang) * rr;
@@ -2308,6 +2355,7 @@ function resumenStats(id, st) {
   if (f) r['Flicks limpios / over / under'] = `${st.limpio} / ${st.over} / ${st.under}`;
   if (def.tipo === 'sitio') r['Rondas ganadas'] = `${st.rondasGanadas} / ${st.rondasJugadas}`;
   if (['entrada', 'jett', 'trade', 'humos'].includes(def.modo)) r['Rondas expuesto a 2+ ángulos'] = st.dobleAngulo;
+  if (def.modo === 'trade') r['Rondas en que adelantaste a tu compañero'] = st.adelantos;
   if (def.modo === 'trade') { r['Trades a tiempo (< 3 s)'] = `${st.tradesOk} / ${st.tradeDist.length}`; const dd = prom(st.tradeDist); r['Distancia a tu compañero'] = dd != null ? dd.toFixed(1) + ' m' : '-'; }
   if (def.modo === 'humos') r['Ángulos humeados'] = `${st.humosUtil} / ${st.humosTot}`;
   if (def.modo === 'lurk') r['Rondas en que te escucharon'] = st.oido;
@@ -2453,7 +2501,8 @@ document.addEventListener('mouseup', e => { if (e.button === 0) disparando = fal
 document.addEventListener('keydown', e => {
   if (estado === 'jugando' && (e.key === 'r' || e.key === 'R')) recargar();
   if (estado === 'jugando' && esc && esc.tecla && !e.repeat) esc.tecla(e.code);
-  if (bloqueado) { teclas.add(e.code); if (/^(Key[WASD]|Shift(Left|Right))$/.test(e.code)) e.preventDefault(); }
+  if (estado === 'jugando' && e.code === 'KeyH' && !e.repeat) { datos.ajustes.zurdo = !datos.ajustes.zurdo; guardar(); avisoVivo = { txt: datos.ajustes.zurdo ? 'Arma en la mano izquierda' : 'Arma en la mano derecha', color: '#aab3c5', t0: tiempoJuego }; }
+  if (bloqueado) { teclas.add(e.code); if (/^(Key[WASD]|Shift(Left|Right)|Space)$/.test(e.code)) e.preventDefault(); }
 });
 document.addEventListener('keyup', e => teclas.delete(e.code));
 // ---------- Movimiento en los mapas: WASD, Shift = caminar; choque con paredes y cajas ----------
@@ -2495,7 +2544,9 @@ function moverJugador(dt) {
   // Suelo: la superficie más alta debajo que se pueda pisar; si no hay, cae (ej. bajar de un balcón)
   let suelo = 0;
   for (const c of esc.cajas) if (nx > c.x1 - 0.1 && nx < c.x2 + 0.1 && nz > c.z1 - 0.1 && nz < c.z2 + 0.1 && c.y2 <= pies + 0.45) suelo = Math.max(suelo, c.y2);
-  if (pies > suelo) { jugador.vy -= 18 * dt; jugador.pies = Math.max(suelo, pies + jugador.vy * dt); } else { jugador.pies = suelo; jugador.vy = 0; }
+  if (pies > suelo || jugador.vy > 0) { jugador.vy -= 18 * dt; jugador.pies = Math.max(suelo, pies + jugador.vy * dt); if (jugador.pies <= suelo) jugador.vy = 0; }
+  else { jugador.pies = suelo; jugador.vy = 0; if (teclas.has('Space')) jugador.vy = 6; } // salto de ~1 m, como en Valorant
+  jugador.enAire = jugador.pies > suelo + 0.02;
   cam.y = jugador.pies + 1.6;
   const v = Math.hypot(jugador.vx, jugador.vz);
   if (v > 0.5) balanceo.y += Math.sin(tiempoJuego * 11) * v * 0.1; // el arma se mueve al caminar
@@ -2533,6 +2584,7 @@ async function empezar(avisoId) {
   if (!ok) { $(avisoId || 'intro-aviso').textContent = 'No se pudo capturar el mouse. Esperá un segundo y volvé a hacer click (límite del navegador).'; return; }
   cam.x = 0; cam.z = 0; cam.y = 1.6; cam.yaw = 0; cam.pitch = 0; tiempoJuego = 0;
   arma = nuevaArma(); marcas = []; caidos = []; disparando = false; avisoVivo = null; ultimoAviso = -10;
+  jugador.enAire = false; jugador.vy = 0;
   esc = crearEscenario(idActual);
   Object.assign(ARMA, esc.def?.arma === 'op' ? OPERATOR : VANDAL); arma = nuevaArma(); aplicarZoom(1);
   esc.iniciar(0);
@@ -2581,11 +2633,14 @@ function finalizar() {
   const princ = diag[0], ejRec = EJ_POR_ERROR[princ.cod];
   const tarjeta = (x, principal) => `<div class="diag ${x.cod === 'ok' ? 'ok' : ''} ${principal ? 'principal' : ''}"><h3>${principal ? (x.cod === 'ok' ? '✅ ' : '🎯 ') : ''}${x.titulo} <span class="en">(${x.en})</span></h3><p>${x.detalle}</p><p><b>Corrección:</b> ${x.consejo}</p>${x.extra ? `<p style="color:var(--tenue)">💬 ${x.extra}</p>` : ''}`;
   $('res-principal').innerHTML = tarjeta(princ, true) + explicacionHTML(princ.cod) +
-    (ejRec && ejRec !== id ? `<button class="primario" id="btn-practicar" style="margin-top:6px">Practicar esto ahora: ${DEFS[ejRec].nombre}</button>` : '') + '</div>';
-  if (ejRec && ejRec !== id) $('btn-practicar').onclick = () => { rutina = null; abrirIntro(ejRec); };
+    (ejRec && ejRec !== id ? (rutina
+      ? `<div class="nota" style="margin-top:6px">💡 Al terminar la rutina, practicá: <b>${DEFS[ejRec].nombre}</b></div>`
+      : `<button id="btn-practicar" style="margin-top:6px">Practicar esto ahora: ${DEFS[ejRec].nombre}</button>`) : '') + '</div>';
+  if (ejRec && ejRec !== id && !rutina) $('btn-practicar').onclick = () => { abrirIntro(ejRec); };
   $('res-diag').innerHTML = diag.slice(1).map(x => tarjeta(x, false) + explicacionHTML(x.cod) + '</div>').join('') || '<div class="nota">Sin otros errores.</div>';
   if (rawInput === false) $('res-diag').innerHTML += `<div class="nota">⚠ ${avisoRaw()}</div>`;
   renderRepeticiones(esc.repes || []);
+  $('res-diag').innerHTML += resumenAvisos(esc);
   if (rutina) {
     rutina.idx++;
     const fin = rutina.idx >= rutina.lista.length;
@@ -3088,7 +3143,7 @@ function renderEstadisticas() {
 // ---------- Ranking del equipo (Firebase: Firestore por REST + usuario anónimo) ----------
 // Se completa con los datos del proyecto de Firebase del equipo (no es una clave secreta: la protegen las reglas)
 // Versión de la app (tiene que coincidir con version.json al publicar)
-const VERSION_APP = '1.5.0';
+const VERSION_APP = '1.5.1';
 // Aviso de la versión de escritorio: salió una actualización mientras la app está abierta
 window.avisoActualizacion = v => {
   if (document.getElementById('aviso-act')) return;
@@ -3638,7 +3693,12 @@ const CARAS = [[0, 2, 6, 4], [1, 3, 7, 5], [0, 1, 5, 4], [2, 3, 7, 6], [0, 1, 3,
 const LUZ = (() => { const l = [-0.35, 0.85, -0.4], m = Math.hypot(...l); return l.map(v => v / m); })();
 function rotX(p, a) { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; }
 function rotY(p, a) { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; }
+// Zurdo: se dibuja el arma espejada (tecla H)
 function dibujarArma() {
+  if (!datos.ajustes.zurdo) return dibujarArmaBase();
+  ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); dibujarArmaBase(); ctx.restore();
+}
+function dibujarArmaBase() {
   if ((esc && esc.tactico) || zoomAct > 1) return; // con el mapa táctico o con zoom no se dibuja
   const modo = datos.ajustes.arma || 'normal';
   if (modo === 'oculta') return;
@@ -3724,11 +3784,15 @@ function dibujarHUD() {
   ctx.font = '12px Segoe UI, sans-serif'; ctx.fillStyle = '#aab3c5';
   ctx.fillText(cr.chico, W - 108, 76);
   // Aviso del coach en vivo (debajo de la mira, se desvanece)
-  if (avisoVivo && tiempoJuego - avisoVivo.t0 < 1.6) {
-    ctx.globalAlpha = Math.min(1, (1.6 - (tiempoJuego - avisoVivo.t0)) / 0.4);
-    ctx.font = '600 20px Segoe UI, sans-serif'; ctx.fillStyle = 'rgba(0,0,0,.55)';
-    const w = ctx.measureText(avisoVivo.txt).width + 28; ctx.fillRect(W / 2 - w / 2, H * 0.62 - 26, w, 38);
-    ctx.fillStyle = avisoVivo.color; ctx.fillText(avisoVivo.txt, W / 2, H * 0.62);
+  // Aviso del coach: cartel chico arriba al centro (debajo del título), lejos de la mira
+  if (avisoVivo && tiempoJuego - avisoVivo.t0 < 2.4) {
+    const e = tiempoJuego - avisoVivo.t0;
+    ctx.globalAlpha = Math.min(1, e / 0.15, (2.4 - e) / 0.4);
+    ctx.font = '600 15px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    const w = ctx.measureText(avisoVivo.txt).width + 34, y = 74;
+    ctx.fillStyle = 'rgba(10,13,20,.72)'; ctx.fillRect(W / 2 - w / 2, y, w, 28);
+    ctx.fillStyle = avisoVivo.color; ctx.fillRect(W / 2 - w / 2, y, 4, 28); // franja de color a la izquierda
+    ctx.fillText(avisoVivo.txt, W / 2 + 2, y + 19);
     ctx.globalAlpha = 1;
   }
   // Munición (abajo a la izquierda)
