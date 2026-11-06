@@ -784,7 +784,7 @@ const DEFS = {
   duelo_abierto: {
     nombre: 'Duelos abiertos', cat: 'duelos', tipo: 'duelo', modo: 'abierto',
     desc: 'Enemigos aparecen en cualquier lado (±35°) y te disparan si no los matás a tiempo. La ventana se achica si ganás.',
-    objetivo: 'Cabeza = kill. Cuerpo = 40 de daño (necesitás 4). Cargador y recarga reales.',
+    objetivo: 'Cabeza = kill. Cuerpo = 40 de daño (necesitás 4). Balas infinitas: concentrate solo en el duelo.',
     intentos: 25, ventanaIni: 900, ventanaMin: 450, espera: [0.6, 1.6],
     rangos: [1200, 1800, 2400, 2900, 3400, 3900, 4400]
   },
@@ -1159,7 +1159,7 @@ class EscSpray {
 // ---------- Ejercicio: duelos (abierto y holding angle) ----------
 class EscDuelo {
   constructor(def) {
-    this.def = def; this.st = nuevasStats(); this.t = 0; this.en = null; this.municionInfinita = false;
+    this.def = def; this.st = nuevasStats(); this.t = 0; this.en = null; this.municionInfinita = def.modo === 'abierto'; // duelos abiertos: balas infinitas
     this.ventana = def.ventanaIni;
     this.paredes = [];
     this.fondo = { x1: -40, x2: 40, z1: 40, h: 8, color: '#202838' };
@@ -1357,7 +1357,7 @@ const MODOS_SITIO = {
     desc: 'Atacás el sitio. Hay de 2 a 4 defensores quietos cuidando ángulos. Tenés 2 Leer (C): el ojo atraviesa paredes y deja casi ciego al que lo mira 2 s. Tiralo y entrá despejando de a un ángulo.',
     objetivo: 'Matá a todos en 40 s. Asomate solo a lo que podés ganar: un ángulo por vez.', rangos: [700, 1200, 1700, 2200, 2700, 3200, 3700] },
   jett: { nombre: 'Entrada Jett (dash)', rondas: 5, ventana: 800, rol: 'Duelista', limite: 35, habilidades: ['dash'],
-    desc: 'Como la entrada, pero con 2 dash de Jett (E): salís disparado hacia donde te movés (WASD). Usalo para cruzar un ángulo abierto o para cambiar de posición después del kill.',
+    desc: 'Como la entrada, pero con el dash de Jett: E prepara el viento (1 s) y tenés 7.5 s para apretar E otra vez y salir disparado hacia donde te movés. Una sola carga, que vuelve cada 2 kills.',
     objetivo: 'Entrá rápido sin regalarte: dash hacia una cobertura, nunca al medio de dos ángulos.', rangos: [700, 1200, 1700, 2200, 2700, 3200, 3700] },
   trade: { nombre: 'Trade (iniciador)', rondas: 6, ventana: 850, rol: 'Iniciador', limite: 40, habilidades: ['flash'],
     desc: 'Un compañero (cabeza azul) entra primero. Si lo matan, tradeá al que lo mató en menos de 3 s. Tenés 2 flashes (E, como la de Skye): explotan adelante tuyo y ciegan a los enemigos que ven la explosión.',
@@ -1374,7 +1374,7 @@ const MODOS_SITIO = {
 };
 // Habilidades: tecla, nombre y cargas por ronda
 // [ranura de Valorant, nombre, cargas por ronda]. La tecla real de cada ranura se cambia en Ajustes
-const HABILIDADES = { dash: ['E', 'Dash', 2], leer: ['C', 'Leer', 2], flash: ['E', 'Flash', 2], humo: ['E', 'Humo', 2], trip: ['C', 'Cable', 2], jaula: ['Q', 'Jaula', 2] };
+const HABILIDADES = { dash: ['E', 'Dash', 1], leer: ['C', 'Leer', 2], flash: ['E', 'Flash', 2], humo: ['E', 'Humo', 2], trip: ['C', 'Cable', 2], jaula: ['Q', 'Jaula', 2] };
 const TECLAS_HAB_DEFAULT = { C: 'KeyC', Q: 'KeyQ', E: 'KeyE', X: 'KeyX' };
 const teclaHab = ranura => (datos.ajustes.teclasHab || TECLAS_HAB_DEFAULT)[ranura] || TECLAS_HAB_DEFAULT[ranura];
 const nombreTecla = code => code.replace(/^Key|^Digit/, '').replace('ShiftLeft', 'Shift').replace('ControlLeft', 'Ctrl');
@@ -1394,44 +1394,76 @@ function puntoModo(m, modo) {
 // Preguntas de gamesense (1 por situación, entre rondas). ok = índice de la respuesta correcta
 const PREGUNTAS_GS = {
   Duelista: [
-    { q: 'Entrás al sitio y hay dos ángulos posibles a la vez. ¿Qué hacés?', op: ['Entro corriendo y miro a los dos', 'Despejo uno desde afuera y entro mirando el otro', 'Espero a que se asomen ellos'], ok: 1,
-      exp: 'Slice the pie: despejá lo que puedas desde afuera para que adentro te quede un solo ángulo.' },
-    { q: 'Ganaste el primer duelo de la entrada. ¿Y ahora?', op: ['Me quedo en el mismo lugar', 'Me reposiciono o uso habilidad para no regalar el trade', 'Recargo ahí mismo'], ok: 1,
-      exp: 'Después del kill, el compañero del muerto mira ese lugar. Movete o te tradean.' },
-    { q: 'Tu equipo no te sigue y quedaste solo en la entrada. ¿Qué conviene?', op: ['Entrar igual, soy el duelista', 'Esperar el apoyo o pedir utilidad antes de entrar', 'Irme a otro sitio solo'], ok: 1,
-      exp: 'Entrar sin trade es regalar un 4v5. La entrada sirve si alguien puede tradearte.' },
-    { q: 'Usás un dash para entrar. ¿Hacia dónde?', op: ['Al medio del sitio', 'Hacia una cobertura que corte ángulos', 'Hacia atrás, por si acaso'], ok: 1,
-      exp: 'El dash sirve para llegar a cobertura rápido; al medio quedás expuesto a todos los ángulos.' }
+    { q: 'Vas a entrar al sitio y hay dos ángulos que te pueden ver a la vez. ¿Qué hacés?', op: ['Entro rápido mirando el más peligroso', 'Despejo uno desde afuera y entro mirando el otro', 'Pido flash y entro al medio a pelear los dos'], ok: 1,
+      exp: 'Slice the pie: lo que despejás desde afuera ya no te puede pegar cuando entrás. Adentro te queda un solo ángulo.' },
+    { q: 'Ganaste el primer duelo de la entrada. ¿Qué es lo más importante ahora?', op: ['Recargar ahí mismo antes de que vengan', 'Moverte del lugar donde te vieron', 'Avisar al equipo y quedarte quieto'], ok: 1,
+      exp: 'El compañero del que mataste ya sabe dónde estás y va a peekear ahí. Moverte le rompe el trade.' },
+    { q: 'Tu equipo quedó lejos y vos ya estás en la entrada. ¿Qué conviene?', op: ['Entrar igual: si espero pierdo el timing', 'Esperar a que lleguen para que te puedan tradear', 'Volver a spawn a buscar al equipo'], ok: 1,
+      exp: 'Una entrada sin trade casi siempre termina en un 4v5. El timing importa, pero sin apoyo no sirve.' },
+    { q: 'Tenés el dash y entrás a un sitio con tres ángulos. ¿Para qué lo usás?', op: ['Para llegar a una cobertura que corte ángulos', 'Para cruzar al fondo del sitio lo antes posible', 'Lo guardo para escapar si sale mal'], ok: 0,
+      exp: 'El dash te deja en una cobertura antes de que reaccionen. Al fondo quedás expuesto a todos; guardarlo te deja sin entrada.' },
+    { q: 'Escuchás un paso del otro lado de la esquina. ¿Cómo peekeás?', op: ['Wide peek corriendo, para ganar velocidad', 'Pegado a la pared, de a poco y con la mira en la cabeza', 'Saltando para que no me peguen'], ok: 0,
+      exp: 'Si ya sabés que está ahí, un wide peek rápido te da la ventaja del que se mueve. El peek lento le regala el primer tiro.' },
+    { q: 'Te flashean justo cuando ibas a entrar. ¿Qué hacés?', op: ['Doy la vuelta y espero que pase', 'Entro igual, total ya me vieron', 'Disparo a ciegas al ángulo más común'], ok: 0,
+      exp: 'Cegado perdés casi todos los duelos. Cubrite, dejá que pase y volvé a entrar con información.' },
+    { q: 'Ganaste el 1v1 en la entrada pero te quedan 40 de vida. ¿Seguís entrando?', op: ['Sí, ya tengo el impulso', 'No: me ubico de forma que me cubran y dejo pasar a otro', 'Sí, pero solo si tengo el dash'], ok: 1,
+      exp: 'Con 40 de vida cualquier tiro te mata. Pasar a apoyar y dejar entrar al que está sano gana más rondas.' },
+    { q: 'Tu equipo pide entrar a B y vos sos el primero. ¿Cuándo usás tus habilidades?', op: ['Todas antes de salir de la esquina', 'Una para tomar espacio y otra para el duelo', 'Ninguna: las guardo para el post-plant'], ok: 1,
+      exp: 'Una habilidad te lleva al lugar y la otra te ayuda a ganar el duelo. Si las gastás todas antes, entrás sin nada.' }
   ],
   Iniciador: [
-    { q: 'Tu duelista entra. ¿A qué distancia lo seguís?', op: ['Pegado, a 1 m', 'A 2–5 m, con ángulo para tradear', 'Lejos, a 15 m, para cubrir'], ok: 1,
-      exp: 'Lo suficientemente cerca para tradear en menos de 3 s, pero no tanto como para que un spray los mate a los dos.' },
-    { q: '¿Cuándo tirás el flash para tu duelista?', op: ['Después de que entre', 'Justo antes de que se asome', 'Cuando lo maten'], ok: 1,
-      exp: 'El flash tiene que explotar cuando él asoma: si llega tarde, el enemigo ya disparó.' },
-    { q: 'Mataron a tu compañero y viste de dónde vino el tiro. ¿Qué hacés?', op: ['Me escondo y espero', 'Peekeo ese ángulo ya, que todavía está apuntando al cuerpo', 'Tiro una habilidad cualquiera'], ok: 1,
-      exp: 'El que mató sigue mirando donde murió tu compañero: es el momento del trade.' },
-    { q: 'Un flash tuyo explota mirándote a vos. ¿Qué pasó?', op: ['Mala suerte', 'Lo tiré sin mirar la pared: tenía que explotar fuera de mi vista', 'El enemigo me lo devolvió'], ok: 1,
-      exp: 'Tirá el flash para que explote del otro lado de la esquina o por encima, no delante de tu cara.' }
+    { q: 'Tu duelista entra. ¿A qué distancia lo seguís?', op: ['Pegado, para entrar juntos', 'A unos metros y con otro ángulo, para poder tradear', 'Lejos, para que no nos maten a los dos'], ok: 1,
+      exp: 'Pegado, un solo spray los mata a los dos; lejos, no llegás a tradear. Unos metros y otro ángulo es lo justo.' },
+    { q: '¿Cuándo tirás el flash para tu duelista?', op: ['Un rato antes, para que el enemigo ya esté ciego', 'Justo cuando él va a salir de la esquina', 'Cuando ya está peleando, para ayudarlo'], ok: 1,
+      exp: 'El flash dura poco: si explota antes, el enemigo ya ve; si es tarde, ya disparó. Tiene que coincidir con el peek.' },
+    { q: 'Mataron a tu compañero y viste de dónde vino el tiro. ¿Qué hacés?', op: ['Me cubro y espero a que se asome', 'Peekeo ya ese ángulo, que sigue mirando el cuerpo', 'Tiro una habilidad para sacarlo de ahí'], ok: 1,
+      exp: 'El que mató todavía apunta donde murió tu compañero. Si peekeás ya, le ganás el duelo antes de que se reubique.' },
+    { q: 'Tu flash explotó y te cegó a vos. ¿Qué hiciste mal?', op: ['La tiré muy cerca del enemigo', 'Explotó delante de mi vista, en vez de detrás de la esquina', 'La tiré muy tarde'], ok: 1,
+      exp: 'La flash tiene que explotar fuera de tu vista: detrás de la esquina o por encima. Si la ves explotar, te ciega.' },
+    { q: 'Tenés una habilidad para sacar información. ¿Cuándo conviene usarla?', op: ['Al principio de la ronda, siempre', 'Antes de que tu equipo entre, para saber dónde están', 'Después de entrar, para encontrar a los que quedan'], ok: 1,
+      exp: 'La info sirve para decidir por dónde entrar. Muy temprano los enemigos se reubican; muy tarde ya no te sirve.' },
+    { q: 'Tu duelista no quiere entrar primero. ¿Qué hacés?', op: ['Entro yo primero, sin esperar', 'Uso mis habilidades para despejar y entramos juntos', 'Le digo que entre igual, que es su rol'], ok: 1,
+      exp: 'Si la entrada se traba, el iniciador puede hacer el espacio con sus habilidades. Pelearse en el chat no gana la ronda.' },
+    { q: 'En un retake tenés dos flashes. ¿Cómo las usás?', op: ['Las dos juntas, para cegar todo', 'Una para entrar y otra para el defuse o el segundo duelo', 'Las guardo para defender el defuse'], ok: 1,
+      exp: 'Separarlas te da dos peleas con ventaja. Juntas, ciegan lo mismo y después no tenés nada.' },
+    { q: 'Viste a un enemigo con tu habilidad de info. ¿Qué es lo primero?', op: ['Ir a buscarlo yo solo', 'Avisar dónde está y cuántos son', 'Esperar a ver si se mueve'], ok: 1,
+      exp: 'La información vale si la sabe todo el equipo. Avisar rápido y claro es la mitad del trabajo del iniciador.' }
   ],
   Controlador: [
-    { q: 'Atacan un sitio con 3 ángulos de defensa. Tenés 2 humos. ¿Cuáles tapás?', op: ['Los dos más cercanos', 'Los que cruzan la entrada y dejan peleas de a uno', 'Dos en el mismo lugar'], ok: 1,
-      exp: 'Humeá los ángulos que te harían pelear 2 contra 1 al entrar; el que queda se pelea solo.' },
-    { q: 'Escuchás pasos en B y la spike está plantada en A. ¿Qué hacés?', op: ['Voy a B', 'Me quedo jugando la spike en A', 'Humeo B y me voy'], ok: 1,
-      exp: 'Con spike plantada, el objetivo es la spike: los pasos en B no cambian dónde tiene que defusar el rival.' },
-    { q: '¿Cuándo tirás los humos de una entrada?', op: ['Al empezar la ronda', 'Justo antes de que tu equipo entre', 'Cuando ya están adentro'], ok: 1,
-      exp: 'El humo dura poco: si lo tirás temprano se termina antes de que tu equipo llegue.' },
-    { q: 'Tu humo tapa un ángulo y el enemigo está adentro del humo. ¿Qué pasa?', op: ['Él te ve y vos no', 'Ninguno ve al otro, pero puede salir de golpe', 'Vos lo ves a él'], ok: 1,
-      exp: 'Nadie ve a través del humo; ojo con los que salen de golpe o lo usan para cruzar.' }
+    { q: 'El sitio tiene 3 ángulos de defensa y tenés 2 humos. ¿Cuáles tapás?', op: ['Los dos más cercanos a la entrada', 'Los dos que obligan a pelear contra varios a la vez', 'Los dos más lejanos, por si tienen Operator'], ok: 1,
+      exp: 'Tapá los ángulos que te harían pelear 2 contra 1. El que queda se pelea de a uno.' },
+    { q: 'La spike está plantada en A y escuchás pasos en B. ¿Qué hacés?', op: ['Voy a B a ver quién es', 'Me quedo jugando alrededor de la spike', 'Humeo B y me voy a A'], ok: 1,
+      exp: 'Con la spike plantada, el rival tiene que venir a defusar. Lo que pasa en B no cambia dónde se gana la ronda.' },
+    { q: '¿Cuándo tirás los humos de una entrada?', op: ['Al empezar la ronda', 'Justo antes de que tu equipo salga', 'Cuando el equipo ya está adentro'], ok: 1,
+      exp: 'Los humos duran unos 15 segundos: si los tirás temprano se terminan antes de que llegue tu equipo.' },
+    { q: 'Hay un enemigo adentro de tu humo. ¿Qué pasa?', op: ['Él te ve a vos, pero vos a él no', 'Ninguno ve al otro, pero puede salir de golpe', 'Vos lo ves porque el humo es tuyo'], ok: 1,
+      exp: 'Nadie ve a través del humo. El peligro es que alguien lo use para cruzar o salir sin aviso.' },
+    { q: 'Defendés solo un sitio y vienen cinco. ¿Qué hacés con tus humos?', op: ['Humeo la entrada para retrasarlos y pido rotación', 'Humeo y peleo adentro del humo', 'Los guardo para el retake'], ok: 0,
+      exp: 'Un humo en la entrada compra segundos para que tu equipo rote. Pelear solo contra cinco casi nunca sale bien.' },
+    { q: 'Tu humo quedó mal ubicado y deja un hueco. ¿Qué conviene?', op: ['Avisar el hueco para que lo cubran o lo eviten', 'Tirar otro humo en el mismo lugar', 'No decir nada para no poner nervioso al equipo'], ok: 0,
+      exp: 'Un hueco avisado se puede evitar. Un hueco que nadie conoce es un regalo para el rival.' },
+    { q: 'Tu equipo quiere hacer post-plant. ¿Dónde te ubicás?', op: ['Arriba de la spike', 'En un lugar desde donde ves la spike sin estar al lado', 'Lo más lejos posible del sitio'], ok: 1,
+      exp: 'Desde afuera ves al que viene a defusar y no te pueden limpiar fácil. Al lado de la spike te encuentran primero.' },
+    { q: 'Quedan 10 segundos y tienen que plantar. ¿Qué humeás?', op: ['Las entradas por donde rotan los defensores', 'El medio del mapa', 'Nada: no hay tiempo'], ok: 0,
+      exp: 'Con poco tiempo hay que plantar sí o sí: cortarles la visión de la entrada al sitio les impide frenar el plant.' }
   ],
   Centinela: [
-    { q: 'Cuidás el sitio y se escuchan pasos atrás tuyo. ¿Qué hacés?', op: ['Los ignoro, el ataque viene por adelante', 'Aviso y giro a cuidar el flanco o pongo trampa', 'Me voy del sitio'], ok: 1,
-      exp: 'El centinela cuida el flanco: el lurk que viene por atrás gana rondas si nadie lo mira.' },
-    { q: '¿Dónde ponés la tripwire para cuidar el flanco?', op: ['En medio del sitio', 'En la entrada por donde vendría el lurk', 'Pegada a vos'], ok: 1,
-      exp: 'La trampa sirve de aviso temprano: en la entrada del flanco te da tiempo a girar.' },
-    { q: 'Hacés lurk y el enemigo todavía no rotó. ¿Cuándo atacás?', op: ['Apenas llego', 'Cuando mi equipo pega en el otro sitio y rotan', 'Nunca, solo doy info'], ok: 1,
-      exp: 'El lurk pega en el timing: cuando rotan o cuando tu equipo entra, te dan la espalda.' },
-    { q: 'Estás haciendo lurk cerca de los enemigos. ¿Cómo te movés?', op: ['Corriendo para llegar rápido', 'Caminando (Shift) para no hacer ruido', 'Saltando'], ok: 1,
-      exp: 'Correr hace ruido de pasos: en el lurk, caminar con Shift es lo que te mantiene invisible.' }
+    { q: 'Cuidás el sitio y escuchás pasos detrás tuyo. ¿Qué hacés?', op: ['Sigo mirando adelante: el ataque viene de ahí', 'Aviso y giro a cubrir el flanco', 'Me voy a buscarlo solo'], ok: 1,
+      exp: 'El centinela cuida el flanco. Un lurk que nadie mira gana rondas solo.' },
+    { q: '¿Dónde ponés el cable para cuidar el flanco?', op: ['En medio del sitio, donde pasa todo', 'En la entrada por donde vendría el lurk', 'Pegado a vos, para matarlo cuando llega'], ok: 1,
+      exp: 'El cable en la entrada te avisa temprano y te da tiempo a girar. Pegado a vos, el aviso llega tarde.' },
+    { q: 'Hacés lurk y los enemigos todavía no rotaron. ¿Cuándo atacás?', op: ['Apenas llego, antes de que me vean', 'Cuando mi equipo pega en el otro sitio y rotan', 'Nunca: solo doy información'], ok: 1,
+      exp: 'El lurk vive del timing: cuando rotan o pelean con tu equipo, te dan la espalda.' },
+    { q: 'Estás cerca de los enemigos haciendo lurk. ¿Cómo te movés?', op: ['Corriendo, para no perder tiempo', 'Caminando con Shift, para no hacer ruido', 'Corro y freno cuando estoy cerca'], ok: 1,
+      exp: 'Correr hace ruido. Cerca de ellos, caminar con Shift es lo que te mantiene invisible.' },
+    { q: 'Te rompieron el setup antes de que llegaran. ¿Qué significa?', op: ['Que van a ir a otro sitio seguro', 'Que probablemente vienen por ahí: avisá y pedí ayuda', 'Nada importante'], ok: 1,
+      exp: 'Romper utilidad es lo que hace el equipo que va a entrar. Es la mejor señal para pedir rotación temprano.' },
+    { q: 'Sos el último vivo y tenés que retomar el sitio. ¿Qué hacés con tu setup?', op: ['Lo dejo donde está', 'Lo muevo para cubrir el defuse o mi espalda', 'Lo uso todo junto para entrar'], ok: 1,
+      exp: 'Un setup que ya no cubre nada no sirve. Movelo a donde te ayuda en el clutch.' },
+    { q: 'Tenés la Operator en un ángulo largo y no viene nadie. ¿Qué hacés?', op: ['Me quedo, en algún momento vienen', 'Cambio de ángulo después de un rato o de un kill', 'Avanzo a buscarlos con la Operator'], ok: 1,
+      exp: 'Si te quedás siempre en el mismo lugar, te lo van a jugar. Cambiar de ángulo te hace impredecible.' },
+    { q: 'Escuchás el cable sonar en el flanco. ¿Qué hacés primero?', op: ['Avisar y mirar hacia el cable', 'Ir corriendo al cable a pelear', 'Ignorarlo: puede ser un señuelo'], ok: 0,
+      exp: 'El cable te da ventaja de información: avisá y apuntá a donde va a salir, sin regalar la posición corriendo.' }
   ]
 };
 MODOS_SITIO.chamber = { nombre: 'Ult de Chamber (Tour de Force)', rondas: 3, ventana: 900, rol: 'Centinela', habilidades: [], arma: 'op',
@@ -1496,15 +1528,57 @@ function carasDeCajas(cajas) {
   return caras;
 }
 // Distancia en el plano del punto p al segmento a-b (para saber si alguien cruzó un cable)
+// Dibuja el humo como un domo de bocanadas que se mueven despacio (de atrás para adelante)
+function dibujarHumo(h, t) {
+  if (h.r < 0.05 || h.alfa <= 0) return;
+  const ps = h.bocanadas.map(b => {
+    const ondula = 1 + Math.sin(t * 0.8 + b.fase) * 0.05;
+    const w = { x: h.x + b.dx * h.r, y: h.piso + 0.15 + b.dy * h.r + b.tam * h.r * 0.5, z: h.z + b.dz * h.r };
+    return { w, rad: b.tam * h.r * ondula, d: Math.hypot(w.x - cam.x, w.y - cam.y, w.z - cam.z) };
+  }).sort((a, b) => b.d - a.d);
+  for (const p of ps) {
+    const c = aCamara(p.w); if (c.z <= NEAR) continue;
+    const q = proyectar(c), R = p.rad * F / c.z;
+    const g = ctx.createRadialGradient(q.x, q.y - R * 0.3, R * 0.1, q.x, q.y, R);
+    g.addColorStop(0, `rgba(178,184,204,${0.97 * h.alfa})`); g.addColorStop(0.75, `rgba(140,148,172,${0.95 * h.alfa})`); g.addColorStop(1, `rgba(120,128,152,${0.25 * h.alfa})`);
+    ctx.beginPath(); ctx.arc(q.x, q.y, R, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  }
+}
 function distSegmento2D(p, a, b) {
   const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz || 1, k = clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / L2, 0, 1);
   return Math.hypot(a.x + dx * k - p.x, a.z + dz * k - p.z);
+}
+// ---------- Humos ----------
+const HUMO = { radio: 4, dura: 15, caida: 0.8, disolver: 1.5 }; // como Brimstone/Omen: ~4 m, 15 s
+// Crea un humo apoyado en el piso: el centro queda bajo para que tape desde el suelo (forma de domo)
+function crearHumo(es, x, piso, z, t, radio, dura) {
+  const h = { x, y: piso + radio * 0.35, z, piso, t0: t, caida: t + HUMO.caida, fin: t + HUMO.caida + dura, rMax: radio, r: 0, alfa: 0, bocanadas: [] };
+  // Bocanadas alrededor del centro; las que quedarían del otro lado de una pared no se crean (el humo no atraviesa paredes)
+  const centro = { x, y: piso + 1, z };
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2 + rand(-0.2, 0.2), alto = i % 2 ? rand(0.35, 0.75) : rand(0, 0.3), d = rand(0.45, 0.7);
+    const b = { dx: Math.cos(a) * d, dy: alto, dz: Math.sin(a) * d, tam: rand(0.42, 0.55), fase: rand(0, 6.28) };
+    const p = { x: x + b.dx * radio, y: piso + 1, z: z + b.dz * radio };
+    const L = Math.hypot(p.x - centro.x, p.z - centro.z) || 1, dir = { x: (p.x - centro.x) / L, y: 0, z: (p.z - centro.z) / L };
+    if (!es.cajas.some(c => { const tc = rayoCaja(centro, dir, c); return tc != null && tc < L; })) h.bocanadas.push(b);
+  }
+  h.bocanadas.push({ dx: 0, dy: 0.45, dz: 0, tam: 0.62, fase: 0 });
+  return h;
+}
+// Física simple: cae, se expande rápido y frena (como un gas), y al final se disuelve
+function actualizarHumo(h, t) {
+  if (t < h.caida) { h.r = 0; h.alfa = 0; return; }
+  const k = t - h.caida;
+  h.r = h.rMax * (1 - Math.exp(-4 * k));                       // expansión con inercia que frena
+  const resta = h.fin - t;
+  h.alfa = Math.min(1, k / 0.25) * Math.min(1, resta / HUMO.disolver); // aparece y al final se disuelve
+  h.bloquea = h.alfa > 0.5 && h.r > 0.6;                         // mientras se disuelve deja de tapar
 }
 // ¿El segmento a→b pasa por adentro del humo h (esfera)?
 function cortaHumo(a, b, h) {
   const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L2 = dx * dx + dy * dy + dz * dz || 1;
   const k = clamp(((h.x - a.x) * dx + (h.y - a.y) * dy + (h.z - a.z) * dz) / L2, 0, 1);
-  return Math.hypot(a.x + dx * k - h.x, a.y + dy * k - h.y, a.z + dz * k - h.z) < (h.r || 2.6);
+  return Math.hypot(a.x + dx * k - h.x, a.y + dy * k - h.y, a.z + dz * k - h.z) < (h.r || h.rMax || 4);
 }
 // Enemigos que disparan (solo mapas): vida del jugador como en Valorant y ráfagas con trazadora
 const VIDA_JUGADOR = 150, REACCION_ENEMIGO = 0.55, CADENCIA_ENEMIGO = 0.13, PRECISION_ENEMIGO = 0.55, PROB_CABEZA_ENEMIGO = 0.08;
@@ -1547,14 +1621,18 @@ class EscSitio {
     this.vida = VIDA_JUGADOR; this.trazas = []; this.golpes = [];
     this.humos = []; this.flashes = []; this.trip = null; this.aliado = null; this.trade = null; this.flashJugador = 0; this.tactico = null;
     this.cargas = Object.fromEntries((this.def.habilidades || []).map(h => [h, HABILIDADES[h][2]])); this.dobleRonda = false; this.avisoOido = false; this.adelantoRonda = false;
-    this.ojos = []; this.cables = this.def.modo === 'flanco' ? this.setupCypher() : []; aplicarZoom(1);
+    this.ojos = []; this.cables = this.def.modo === 'flanco' ? this.setupCypher() : []; aplicarZoom(1); this.jett = null; this.killsDash = 0;
     this.ponerBarrera();
     jugador.dashFin = 0;
     this.tLimite = this.def.limite ? this.listo + this.def.limite : null;
     // Pregunta de gamesense al empezar la ronda 2: el juego espera la respuesta (teclas 1, 2, 3)
     if (this.ronda === 2 && this.def.rol) {
       const banco = PREGUNTAS_GS[this.def.rol];
-      this.pregunta = { ...banco[Math.floor(Math.random() * banco.length)], resp: null };
+      // Pregunta al azar (sin repetir la anterior) y opciones mezcladas: la correcta no está siempre en el mismo número
+      const usadas = (this.gsUsadas = this.gsUsadas || []), libres = banco.filter(b => !usadas.includes(b.q));
+      const base = (libres.length ? libres : banco)[Math.floor(Math.random() * (libres.length || banco.length))]; usadas.push(base.q);
+      const orden = barajar([0, 1, 2]);
+      this.pregunta = { ...base, op: orden.map(k => base.op[k]), ok: orden.indexOf(base.ok), resp: null };
       this.listo = Infinity; this.tLimite = null;
     } else this.pregunta = null;
     const m = this.mapa, modo = this.def.modo;
@@ -1598,16 +1676,26 @@ class EscSitio {
   candidatosHold() {
     const m = this.mapa, ini = puntoModo(m, 'entrada').pos, ojoIni = { x: ini[0], y: ini[1] + 1.6, z: ini[2] };
     const sitio = { x: m.spike[0], y: 1.6, z: m.spike[1] }, entradaSitio = (r => ({ x: r[0], y: r[1] + 1.6, z: r[2] }))(m.ataque[0].ruta.at(-1));
-    const pts = [...m.escondites.map(([x, y, z]) => [x, y, z]), ...m.defensa.flatMap(d => d.ruta.slice(-2)), m.puntos.defensa.pos, m.puntos.postplant.pos];
-    const ok = pts.filter(([x, y, z]) => {
+    // Puntos posibles: escondites, puntos de defensa y cada 2 m sobre las rutas de defensa
+    const muestras = r => r.slice(0, -1).flatMap((p, i) => { const q = r[i + 1], L = Math.hypot(q[0] - p[0], q[2] - p[2]), n = Math.max(1, Math.floor(L / 2));
+      return Array.from({ length: n }, (_, k) => [p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n, p[2] + (q[2] - p[2]) * k / n]); }).concat([r.at(-1)]);
+    const pts = [...m.escondites.map(([x, y, z]) => [x, y, z]), ...m.defensa.flatMap(d => muestras(d.ruta)), m.puntos.defensa.pos, m.puntos.postplant.pos];
+    this.holdValido = p => { // la barrera de inicio no cuenta como pared para elegir lugares
+      const bar = this.barrera; if (bar) this.cajas = this.cajas.filter(c => c !== bar);
+      const ok = this.esHoldValido(p, ini, ojoIni, sitio, entradaSitio); if (bar) this.cajas = [...this.cajas, bar]; return ok;
+    };
+    const ok = pts.filter(p => this.holdValido(p));
+    return ok.filter((p, i) => ok.findIndex(q => Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.5) === i); // sin repetidos
+  }
+  esHoldValido([x, y, z], ini, ojoIni, sitio, entradaSitio) {
+    {
       const ojo = { x, y: y + 1.6, z }, pecho = { x, y: y + 1, z };
       if (Math.hypot(x - ini[0], z - ini[2]) < 8) return false;
       if (!this.bloqueado(ojoIni, ojo) || !this.bloqueado(ojoIni, pecho)) return false; // se vería desde el arranque
       if (y > 0.1 && !this.cajas.some(c => Math.abs(c.y2 - y) < 0.15 && x > c.x1 && x < c.x2 && z > c.z1 && z < c.z2)) return false; // flotando sin piso
       if (this.cajas.some(c => x > c.x1 - 0.3 && x < c.x2 + 0.3 && z > c.z1 - 0.3 && z < c.z2 + 0.3 && c.y2 > y + 0.45 && c.y1 < y + 1.8)) return false; // adentro de una caja
       return !this.bloqueado(sitio, ojo) || !this.bloqueado(entradaSitio, ojo);
-    });
-    return ok.filter((p, i) => ok.findIndex(q => Math.hypot(q[0] - p[0], q[2] - p[2]) < 2.5) === i); // sin repetidos
+    }
   }
   // Arma la ronda de las situaciones por rol
   rondaRol(modo) {
@@ -1640,7 +1728,16 @@ class EscSitio {
     }
     // entrada, jett, trade y humos: defensores quietos cuidando ángulos
     const n = Math.min(this.candidatos.length, modo === 'trade' ? randInt(2, 3) : randInt(2, 4));
-    for (const p of barajar(this.candidatos).slice(0, n)) this.enemigos.push(quieto(p));
+    // Elige lugares separados (≥ 4 m) para que crucen ángulos distintos, y corre cada uno hasta 1 m al azar
+    const elegidos = [];
+    for (const p of barajar(this.candidatos)) {
+      if (elegidos.length >= n) break;
+      if (elegidos.some(q => Math.hypot(q[0] - p[0], q[2] - p[2]) < 4)) continue;
+      let final = p;
+      for (let k = 0; k < 6; k++) { const c = [p[0] + rand(-1, 1), p[1], p[2] + rand(-1, 1)]; if (this.holdValido(c)) { final = c; break; } }
+      elegidos.push(final);
+    }
+    for (const p of elegidos) this.enemigos.push(quieto(p));
     if (modo === 'trade') { // el compañero entra primero por la misma ruta
       const r = m.ataque[0].ruta, dx = r[1][0] - r[0][0], dz = r[1][2] - r[0][2], d = Math.hypot(dx, dz) || 1;
       const a = new EnemigoSitio([[r[0][0] + dx / d * 2, r[0][1], r[0][2] + dz / d * 2], ...r.slice(1)], 'quieto', 0.6);
@@ -1668,17 +1765,23 @@ class EscSitio {
     if (!this.ronda || this.finRonda || t < this.listo) return;
     const hab = (this.def.habilidades || []).find(h => teclaHab(HABILIDADES[h][0]) === code); if (!hab) return;
     if (hab === 'trip') return this.ponerCable(); // el cable de Cypher se puede mover siempre (máximo 2)
+    if (hab === 'dash' && this.jett) { // segunda E: si ya cargó el viento, sale el dash
+      if (t < this.jett.listo) { avisar('Todavía se está cargando el viento'); return; }
+      jugador.dashDir = dirMovimiento(); jugador.dashFin = tiempoJuego + 0.18; this.jett = null; sonidoBip(520, 0.12); return;
+    }
     if (hab === 'humo' && this.tactico) { this.tactico = null; return; }
     if (this.cargas[hab] <= 0) { this.tactico = null; avisar(`Sin cargas de ${HABILIDADES[hab][1]}`); return; }
     const f = adelante();
     if (hab === 'dash') {
-      jugador.dashDir = dirMovimiento(); jugador.dashFin = tiempoJuego + 0.18; this.cargas[hab]--; sonidoBip(520, 0.12);
+      // Primera E: prepara el viento (se gasta la carga, como en Valorant)
+      this.cargas[hab]--; this.jett = { t0: t, listo: t + 1, fin: t + 1 + 7.5 }; sonidoBip(380, 0.25);
     } else if (hab === 'leer') { // ojo de Reyna: atraviesa paredes, se activa a los 0.5 s y dura 2 s
       const p = puntoEn(f, 8); this.ojos.push({ desde: { ...cam }, pos: { x: p.x, y: Math.max(p.y, 1.2), z: p.z }, t0: t, fin: t + 2.5 }); this.cargas[hab]--; sonidoBip(600, 0.1);
     } else if (hab === 'jaula') { // jaula de Cypher: humo corto donde apuntás (piso, máx. 25 m)
       let d = this.distPared(f) ?? 25; if (f.y < -0.01) d = Math.min(d, (cam.y - jugador.pies) / -f.y); d = Math.min(d, 25);
       const p = puntoEn(f, Math.max(1, d - 0.3));
-      this.humos.push({ x: p.x, y: jugador.pies + 1.2, z: p.z, t0: t, r: 0, rMax: 2.0, fin: t + 7, jaula: true }); this.cargas[hab]--; sonidoBip(350, 0.15);
+      const jaula = crearHumo(this, p.x, jugador.pies, p.z, t, 2.4, 7); jaula.jaula = true; jaula.caida = t; // la jaula aparece en el lugar, sin caer
+      this.humos.push(jaula); this.cargas[hab]--; sonidoBip(350, 0.15);
     } else if (hab === 'flash') {
       const d = Math.min(9, (this.distPared(f) ?? 99) - 0.4);
       this.flashes.push({ desde: { ...cam }, f, d: Math.max(1, d), t0: t, pop: t + 0.35, hecho: false }); this.cargas[hab]--; sonidoBip(900, 0.05);
@@ -1733,7 +1836,7 @@ class EscSitio {
   colocarHumo(x, z) {
     if (!(this.cargas.humo > 0)) return;
     let piso = 0; for (const c of this.cajas) if (x > c.x1 && x < c.x2 && z > c.z1 && z < c.z2 && c.y2 <= 3.5) piso = Math.max(piso, c.y2);
-    this.humos.push({ x, y: piso + 1.3, z, t0: this.t, r: 0 }); this.cargas.humo--; sonidoBip(300, 0.2);
+    this.humos.push(crearHumo(this, x, piso, z, this.t, HUMO.radio, HUMO.dura)); this.cargas.humo--; sonidoBip(300, 0.2);
     if (!this.cargas.humo) this.tactico = null;
   }
   // Límites del mapa y escala para dibujar el mapa táctico
@@ -1754,11 +1857,11 @@ class EscSitio {
       ctx.fillRect(a, b, (c.x2 - c.x1) * k, (c.z2 - c.z1) * k);
     }
     const [sx, sz] = aPant(this.mapa.spike[0], this.mapa.spike[1]); ctx.fillStyle = '#ff4d6d'; ctx.font = '700 13px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('SITIO', sx, sz);
-    for (const h of this.humos) { const [hx, hz] = aPant(h.x, h.z); ctx.beginPath(); ctx.arc(hx, hz, 2.6 * k, 0, Math.PI * 2); ctx.fillStyle = 'rgba(150,160,190,0.75)'; ctx.fill(); }
+    for (const h of this.humos) { const [hx, hz] = aPant(h.x, h.z); ctx.beginPath(); ctx.arc(hx, hz, h.rMax * k, 0, Math.PI * 2); ctx.fillStyle = 'rgba(150,160,190,0.75)'; ctx.fill(); }
     const [px, pz] = aPant(cam.x, cam.z); ctx.beginPath(); ctx.arc(px, pz, 6, 0, Math.PI * 2); ctx.fillStyle = '#4da3ff'; ctx.fill();
     const [fx, fz] = aPant(cam.x + Math.sin(cam.yaw) * 3, cam.z + Math.cos(cam.yaw) * 3);
     ctx.beginPath(); ctx.moveTo(px, pz); ctx.lineTo(fx, fz); ctx.strokeStyle = '#4da3ff'; ctx.lineWidth = 2; ctx.stroke();
-    const [cx, cz] = aPant(this.tactico.x, this.tactico.z); ctx.beginPath(); ctx.arc(cx, cz, 2.6 * k, 0, Math.PI * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+    const [cx, cz] = aPant(this.tactico.x, this.tactico.z); ctx.beginPath(); ctx.arc(cx, cz, HUMO.radio * k, 0, Math.PI * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#ffffff'; ctx.font = '600 16px Segoe UI, sans-serif';
     ctx.fillText(`MAPA TÁCTICO · mové el mouse y hacé clic para tirar el humo (${this.cargas.humo} restantes) · ${nombreTecla(teclaHab('E'))} para cerrar`, W / 2, 92);
     ctx.textAlign = 'left';
@@ -1767,7 +1870,7 @@ class EscSitio {
   // Utilidad por frame: flashes, humos, tripwire, compañero y lurk
   actualizarRol(dt, t) {
     this.humos = this.humos.filter(h => !h.fin || t < h.fin);
-    for (const h of this.humos) h.r = Math.min(h.rMax || 2.6, (t - h.t0) / 0.6 * (h.rMax || 2.6));
+    for (const h of this.humos) actualizarHumo(h, t);
     // Jaulas: el que la cruza queda frenado y suena
     for (const h of this.humos) if (h.jaula) for (const e of this.enemigos) {
       if (!e.vivo || e.estado === 'espera' || Math.hypot(e.pos.x - h.x, e.pos.z - h.z) > h.r) continue;
@@ -1816,6 +1919,7 @@ class EscSitio {
       else if (ciegos) avisar(`Flash: ${ciegos} enemigo(s) ciego(s)`, '#2ecc71');
     }
     this.flashJugador = Math.max(0, this.flashJugador - dt);
+    if (this.jett && t > this.jett.fin) { this.jett = null; avisar('Se te pasó el dash: tenés 7.5 s después de prepararlo'); }
     if (this.def.modo === 'lurk' && velJugador() > 3) for (const e of this.enemigos) {
       if (!e.vivo || e.alerta || Math.hypot(e.pos.x - cam.x, e.pos.z - cam.z) > 15) continue;
       e.alerta = true; if (!this.avisoOido) { this.avisoOido = true; this.st.oido++; avisar('Te escucharon correr: caminá con Shift'); }
@@ -1874,7 +1978,7 @@ class EscSitio {
   bloqueado(a, b) {
     const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, d = Math.hypot(dx, dy, dz), f = { x: dx / d, y: dy / d, z: dz / d };
     for (const c of this.cajas) { const tc = rayoCaja(a, f, c); if (tc != null && tc < d - 0.05) return true; }
-    if (this.humos) for (const h of this.humos) if (h.r > 0.3 && cortaHumo(a, b, h)) return true; // nadie ve a través del humo
+    if (this.humos) for (const h of this.humos) if (h.bloquea && cortaHumo(a, b, h)) return true; // nadie ve a través del humo
     return false;
   }
   visible(e) { return !this.bloqueado(cam, e.pos) || !this.bloqueado(cam, { x: e.pos.x, y: e.pos.y - 0.6, z: e.pos.z }); }
@@ -1991,8 +2095,13 @@ class EscSitio {
     (this.def.habilidades || []).forEach((h, i) => {
       const [ranura, nom, max] = HABILIDADES[h], y = H - 172 - i * 44;
       const n = h === 'trip' ? this.cables.filter(c => c.activo).length : this.cargas[h];
-      caja(16, y, 200, 38); ctx.fillStyle = n ? '#ffffff' : '#6b7488'; ctx.font = '600 15px Segoe UI, sans-serif';
-      ctx.fillText(`[${nombreTecla(teclaHab(ranura))}] ${nom}  ${'●'.repeat(n)}${'○'.repeat(Math.max(0, max - n))}`, 116, y + 25);
+      caja(16, y, 200, 38); ctx.fillStyle = n || (h === 'dash' && this.jett) ? '#ffffff' : '#6b7488'; ctx.font = '600 15px Segoe UI, sans-serif';
+      ctx.fillText(`[${nombreTecla(teclaHab(ranura))}] ${nom}  ${'●'.repeat(n)}${'○'.repeat(Math.max(0, max - n))}`, 116, y + 22);
+      if (h === 'dash' && this.jett) { // barrita: se llena mientras carga (1 s) y se vacía con el tiempo que queda (7.5 s)
+        const j = this.jett, cargando = this.t < j.listo, k = cargando ? (this.t - j.t0) / 1 : (j.fin - this.t) / 7.5;
+        ctx.fillStyle = '#2a3347'; ctx.fillRect(28, y + 29, 176, 5);
+        ctx.fillStyle = cargando ? '#4da3ff' : '#2ecc71'; ctx.fillRect(28, y + 29, 176 * clamp(k, 0, 1), 5);
+      }
     });
   }
   disparo(t, f) {
@@ -2014,6 +2123,8 @@ class EscSitio {
     if (h.zona === 'cabeza') { st.cabezas++; e.vida -= ARMA.danoCabeza; } else { st.cuerpos++; e.vida -= ARMA.danoCuerpo; }
     if (e.vida > 0) { sonido('cuerpo'); efectoHit(); return { hit: true, punto }; }
     e.vivo = false; st.kills++;
+    // Jett: el dash vuelve cada 2 kills
+    if (this.cargas && 'dash' in this.cargas && ++this.killsDash >= 2) { this.killsDash = 0; if (!this.cargas.dash && !this.jett) { this.cargas.dash = 1; avisar('Dash recargado (2 kills)', '#2ecc71'); } }
     if (this.trade && !this.trade.hecho && e === this.trade.asesino) {
       this.trade.hecho = true; const ms = Math.round((t - this.trade.t0) * 1000); st.tradesT.push(ms);
       if (ms <= 3000) { st.tradesOk++; st.puntos += 150; avisar(`✔ Trade en ${(ms / 1000).toFixed(1)} s`, '#2ecc71'); }
@@ -2055,10 +2166,7 @@ class EscSitio {
         const c = it.cable; ctx.beginPath(); ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2.5; trazarLinea(c.a, c.b); ctx.stroke();
         dibujarEsfera(c.a, 0.07, '#00e5ff'); dibujarEsfera(c.b, 0.07, '#00e5ff');
       }
-      else if (it.humo) {
-        const c = aCamara(it.humo); if (c.z > NEAR) { const p = proyectar(c);
-          ctx.beginPath(); ctx.arc(p.x, p.y, it.humo.r * F / c.z, 0, Math.PI * 2); ctx.fillStyle = 'rgba(132,140,168,0.93)'; ctx.fill(); }
-      }
+      else if (it.humo) dibujarHumo(it.humo, this.t);
       else {
         dibujarSpike(it.spike.x, it.spike.z, Math.sin(this.t * (this.spikeFin - this.t < 10 ? 20 : 8)) > 0);
       }
@@ -2075,8 +2183,13 @@ class EscSitio {
       if (!fl.hecho) dibujarEsfera(p, 0.08, '#ffffff');
       else if (this.t - fl.pop < 0.25) dibujarEsfera(p, 0.6 * (1 - (this.t - fl.pop) / 0.25) + 0.1, 'rgba(255,255,255,0.9)');
     }
-    // Adentro de un humo: todo gris
-    if (this.humos.some(h => Math.hypot(h.x - cam.x, h.y - cam.y, h.z - cam.z) < h.r * 0.9)) { ctx.fillStyle = 'rgba(132,140,168,0.95)'; ctx.fillRect(0, 0, W, H); }
+    // Granada de humo cayendo del cielo (antes de abrirse)
+    for (const h of this.humos) if (this.t < h.caida && !h.jaula) {
+      const k = (this.t - h.t0) / HUMO.caida; dibujarEsfera({ x: h.x, y: h.piso + 6 * (1 - k) + 0.2, z: h.z }, 0.12, '#cfd5e2');
+    }
+    // Adentro de un humo: todo gris (según qué tan denso está)
+    const adentro = this.humos.find(h => h.alfa > 0.2 && Math.hypot(h.x - cam.x, (h.y - cam.y) * 0.8, h.z - cam.z) < h.r * 0.85);
+    if (adentro) { ctx.fillStyle = `rgba(132,140,168,${0.95 * adentro.alfa})`; ctx.fillRect(0, 0, W, H); }
     // Trazadoras enemigas: línea amarilla que se desvanece en 0.18 s
     this.trazas = this.trazas.filter(z => this.t - z.t0 < 0.18);
     for (const z of this.trazas) {
@@ -3143,7 +3256,7 @@ function renderEstadisticas() {
 // ---------- Ranking del equipo (Firebase: Firestore por REST + usuario anónimo) ----------
 // Se completa con los datos del proyecto de Firebase del equipo (no es una clave secreta: la protegen las reglas)
 // Versión de la app (tiene que coincidir con version.json al publicar)
-const VERSION_APP = '1.5.1';
+const VERSION_APP = '1.5.2';
 // Aviso de la versión de escritorio: salió una actualización mientras la app está abierta
 window.avisoActualizacion = v => {
   if (document.getElementById('aviso-act')) return;

@@ -1,13 +1,15 @@
 {
- "version": "1.5.1",
+ "version": "1.5.2",
  "minimaInstalador": "1.5.0",
  "html": {
   "url": "app/aim-coach.html",
-  "sha256": "6a9e111ac070b85ca54cf4cecefbf9cba6730f48fac1bd0e7c1e13f3a1bef5bd"
+  "sha256": "07153aeab3a121beaf923e1480a83151168df14f33c708f0468d65cd232b83ab"
  },
  "notas": [
-  "Coach en vivo más chico y sin repetirse",
-  "Barrera de inicio, salto (Espacio) y arma zurda (H)",
-  "Flash del iniciador en E; trade penaliza adelantar al compañero"
+  "Humos de 4 m con física (caen, se expanden y se disuelven a los 15 s)",
+  "Defensores en lugares distintos cada ronda",
+  "Dash de Jett como en el juego",
+  "Gamesense: 8 preguntas por rol y opciones mezcladas",
+  "Duelos abiertos con balas infinitas"
  ]
 }
